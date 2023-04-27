@@ -20,6 +20,11 @@ def parse_input(file: str) -> tuple[set[str], list[tuple[set[str], set[str]]]]:
     return ingredients, clients
 
 
+def save_solution(ingredients: set[str], file: str):
+    with open(file, "w") as output:
+        output.write(" ".join(list(ingredients)))
+
+
 def likes_pizza(pizza: set[str], client: tuple[set[str], set[str]]) -> bool:
     for ingredient in pizza:
         if (ingredient not in client[0]) or (ingredient in client[1]):
@@ -27,6 +32,5 @@ def likes_pizza(pizza: set[str], client: tuple[set[str], set[str]]) -> bool:
     return True
 
 
-def save_solution(ingredients: set[str], file: str):
-    with open(file, "w") as output:
-        output.write(" ".join(list(ingredients)))
+def satisfied_clients(pizza: set[str], clients: list[tuple[set[str], set[str]]]) -> int:
+    return sum(map(lambda c: 1 if likes_pizza(pizza, c) else 0, clients))
