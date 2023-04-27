@@ -26,8 +26,12 @@ def save_solution(ingredients: set[str], file: str):
 
 
 def likes_pizza(pizza: set[str], client: tuple[set[str], set[str]]) -> bool:
+    for ingredient in client[0]:
+        if (ingredient not in pizza):
+            return False
+    # Disliked ingredients
     for ingredient in pizza:
-        if (ingredient not in client[0]) or (ingredient in client[1]):
+        if (ingredient in client[1]):
             return False
     return True
 
