@@ -22,7 +22,7 @@ def parse_input(file: str) -> tuple[set[str], list[tuple[set[str], set[str]]]]:
 
 def save_solution(ingredients: set[str], file: str):
     with open(file, "w") as output:
-        output.write(" ".join(list(ingredients)))
+        output.write(f"{len(ingredients)} " + " ".join(list(ingredients)))
 
 
 def likes_pizza(pizza: set[str], client: tuple[set[str], set[str]]) -> bool:
