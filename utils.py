@@ -18,3 +18,10 @@ def parse_input(file: str) -> tuple[set[str], list[tuple[set[str], set[str]]]]:
                     dislikes.add(ingredient)
             clients.append((likes, dislikes))
     return ingredients, clients
+
+
+def likes_pizza(pizza: set[str], client: tuple[set[str], set[str]]) -> bool:
+    for ingredient in pizza:
+        if (ingredient not in client[0]) or (ingredient in client[1]):
+            return False
+    return True
