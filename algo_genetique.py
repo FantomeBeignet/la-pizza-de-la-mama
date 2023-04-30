@@ -1,8 +1,8 @@
 import random as rd
 from utils import parse_input, satisfied_clients
 
-pop_size = 10
-sel_size = 5
+pop_size = 100
+sel_size = 20
 
 
 def create_pizzas(ingredients: set[str]) -> list[set[str]]:
@@ -55,10 +55,24 @@ def fill_pizza_selection(pizza_list: list[set[str]], ingredients: set[str]):
         pizza_list.append(pizza)
 
 
-# pizza_list = create_pizzas(parse_input("subject/a_exemple.txt")[0])
-# pizza_list = proportion_selection(
-#     pizza_list, parse_input("subject/a_exemple.txt")[1])
-# print(pizza_list, len(pizza_list))
-# crossing(pizza_list, parse_input("subject/a_exemple.txt")[0])
-# fill_pizza_selection(pizza_list, parse_input("subject/a_exemple.txt")[0])
-# print(pizza_list, len(pizza_list))
+def algo_start() -> set[str]:
+    ingredients, clients = parse_input("subject/a_exemple.txt")
+    pizza_list = create_pizzas(ingredients)
+    return run_gen_algo(pizza_list, ingredients, clients)
+
+
+def run_gen_algo(pizza_list: list[set[str]], ingredients: set[str], clients: list[tuple[set[str], set[str]]]) -> set[str]:
+    new_pizza_list = proportion_selection(pizza_list, clients)
+    for pizz in new_pizza_list:
+        print(pizz, satisfied_clients(pizz, clients))
+    print("\n")
+    if is_gen_good(new_pizza_list, clients):
+        return pizza_list[0]
+    else:
+        crossing(new_pizza_list, ingredients)
+        if len(new_pizza_list) < pop_size:
+            fill_pizza_selection(new_pizza_list, ingredients)
+        return run_gen_algo(new_pizza_list, ingredients, clients)
+
+
+# print(algo_start())
