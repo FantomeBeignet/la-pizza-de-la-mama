@@ -34,8 +34,21 @@ def proportion_selection(pizza_list: list[set[str]], clients: list[tuple[set[str
     return sel_list
 
 
-# print(create_pizzas(parse_input("subject/a_exemple.txt")[0], 3))
-# print(is_gen_good([{"peppers", "cheese"}, {"cheese", "mushrooms", "tomatoes", "peppers", "pineappple"}, {
-#       "peppers", "mushrooms"}], parse_input("subject/a_exemple.txt")[1]))
-# propo_selection(create_pizzas(parse_input("subject/a_exemple.txt")
-#                               [0]), parse_input("subject/a_exemple.txt")[1])
+def crossing(pizza_list: list[set[str]], ingredients: set[str]) -> list[set[str]]:
+    for i in range(len(pizza_list) // 2):
+        pizza = set()
+        for ing in ingredients:
+            if (ing in pizza_list[2*i] and ing in pizza_list[2*i+1]):
+                pizza.add(ing)
+            elif (ing in pizza_list[2*i] or ing in pizza_list[2*i+1]):
+                if rd.random() > 0.5:
+                    pizza.add(ing)
+        pizza_list.append(pizza)
+
+
+# pizza_list = create_pizzas(parse_input("subject/a_exemple.txt")[0])
+# pizza_list = proportion_selection(
+#     pizza_list, parse_input("subject/a_exemple.txt")[1])
+# print(pizza_list)
+# crossing(pizza_list, parse_input("subject/a_exemple.txt")[0])
+# print(pizza_list)
