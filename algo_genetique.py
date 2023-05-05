@@ -41,13 +41,9 @@ def is_gen_good(pizza_list: list[set[str]], clients: list[tuple[set[str], set[st
         return False
 
 
-def proportion_selection(pizza_list: list[set[str]], clients: list[tuple[set[str], set[str]]]) -> list[set[str]]:
-    global start_time
-    sel_list = []
-    for i in range(sel_size):
-        sel_list.append(pizza_list.pop(get_max_id(pizza_list, clients)))
-        print("append", i, time.time()-start_time)
-    return sel_list
+def proportion_selection(scored_list: list[int,set[str]], clients: list[tuple[set[str], set[str]]]) -> list[set[str]]:
+    scored_list.sort()
+    return [ e[1] for e in sorted(scored_list)[:sel_size]]
 
 
 def get_max_id(pizza_list: list[set[str]], clients: list[tuple[set[str], set[str]]]):
@@ -109,23 +105,23 @@ def get_max_score(pizza_list: list[set[str]], clients: list[tuple[set[str], set[
 
 
 def run_gen_algo(pizza_list: list[set[str]], ingredients: set[str], clients: list[tuple[set[str], set[str]]]) -> set[str]:
-    new_pizza_list = proportion_selection(pizza_list, clients)
+    scored_list = []
+    for pizza in pizza_list:
+        scored_list.append([satisfied_clients(pizza,clients),pizza])
+    new_pizza_list = [ e[1] for e in sorted(scored_list)[::-1][:sel_size]]
     global start_time
     print("selected", time.time()-start_time)
     if is_gen_good(new_pizza_list, clients):
         return new_pizza_list[get_max_id(new_pizza_list, clients)]
     else:
         best = new_pizza_list.pop(get_max_id(new_pizza_list, clients))
-        print(satisfied_clients(best, clients))
         crossing(new_pizza_list, ingredients)
-        print("crossing", time.time()-start_time)
         mutate(new_pizza_list, ingredients)
-        print("mutated", time.time()-start_time)
         new_pizza_list.append(best)
         # print_pizzas(new_pizza_list, clients)
         if len(new_pizza_list) < pop_size:
             fill_pizza_selection(new_pizza_list, ingredients)
-        print("filled", time.time()-start_time)
+        print("modified", time.time()-start_time)
         return run_gen_algo(new_pizza_list, ingredients, clients)
 
 
