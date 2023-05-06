@@ -1,11 +1,11 @@
-from random import choice, randint, choices, random
+from random import randint, choices, random
+import numpy as np
 from math import exp, log
 import sys
-import time
-from utils import disatisfied_clients, parse_input, satisfied_clients, save_solution
+from utils import parse_input, satisfied_clients, save_solution
 
 
-def init(ingredients: set[str], clients: list[tuple[set[str], set[str]]]):
+def init(ingredients: set[str], clients: list[tuple[set[str], set[str]]]) -> float:
     # 100 random solutions
     random_list = []
     for i in range(2):
@@ -29,62 +29,48 @@ def init(ingredients: set[str], clients: list[tuple[set[str], set[str]]]):
         return 10
 
 
-def neighboor(state: set[str], ingredients: set[str]) -> set[str]:
+def neighbor(state: set[str], ingredients: set[str]) -> set[str]:
     new_state = state.copy()
-    new_ingr = choice(tuple(ingredients))
-    old_ingr = choice(tuple(state))
-    while (new_ingr in state):
-        new_ingr = choice(tuple(ingredients))
-    p = randint(0, 100)
-    if (p < 50):
+    p = np.random.rand()
+    
+    # first case : we add a new ingredient
+    if (p < 0.5 or len(state) == 1) and len(state)!=len(ingredients):
+        new_ingr = np.random.choice(list(ingredients - state))
         new_state.add(new_ingr)
+    # second case : we remove an ingredient
     else:
+        old_ingr = np.random.choice(list(state))
         new_state.remove(old_ingr)
 
     return new_state
 
-
-def neighboorhood(state: set[str], ingredients: set[str]) -> list[set[str]]:
-    list_neighboors = []
-    if (len(state) != 1):
-        for old_ingr in state:
-            new_state_remove = state.copy()
-            new_state_remove.remove(old_ingr)
-            list_neighboors.append(new_state_remove)
-    for new_ingr in ingredients:
-        if (new_ingr not in state):
-            new_state_add = state.copy()
-            new_state_add.add(new_ingr)
-            list_neighboors.append(new_state_add)
-
-    return list_neighboors
-
-
-def silukated_annealing1(ingredients: set[str], clients: list[tuple[set[str], set[str]]], first_choice: set[str]) -> set[str]:
-    t = init(ingredients, clients)
-    cooling_factor = 0.9
-    u = first_choice
+def simulated_annealing(ingredients: set[str], clients: list[tuple[set[str], set[str]]], first_choice: set[str]) -> set[str]:
+    t= init(ingredients,clients) # TO first temperature
+    cooling_factor =0.9
+    Nmax  = len(ingredients)
+    epsilon = 0.001
+    u = first_choice 
     N = 0
     K = 0
-    while (t > 0.0001):
-        # ns = neighboorhood(u, ingredients)
-        v = neighboor(u, ingredients)
+    rng = np.random.default_rng()  # random number generator
+    while (t > epsilon):
+        v = neighbor(u, ingredients)
         fv = -satisfied_clients(v, clients)
         fu = -satisfied_clients(u, clients)
         if (fv < fu):
             N += 1
             u = v
         else:
-            r = random()
+            r = rng.random()
             if (r < exp((fu-fv)/t)):
                 N += 1
                 u = v
         K += 1
-        if (N == 50) or (K == 150):
-            print("Etape "+str(K) + " (acceptée " + str(N) + " ) : "+str(t))
+        if (N == Nmax) or (K == Nmax*100//12):
             t = t*cooling_factor
             N = 0
             K = 0
+            print("Etape t = "+str(t)+", score= "+str(-fv))
     return u
 
 
@@ -92,9 +78,8 @@ if __name__ == '__main__':
     input_file = sys.argv[1]
     output_file = sys.argv[2]
     ingredients, clients = parse_input(input_file)
-
     c = randint(0, len(ingredients))
     temp = set(choices(tuple(ingredients), k=c))
-    sol = silukated_annealing1(ingredients, clients, temp)
+    sol = simulated_annealing(ingredients, clients, temp)
     print(sol)
     save_solution(sol, output_file)
