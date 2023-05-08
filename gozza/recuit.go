@@ -94,9 +94,10 @@ func neighbour(pizza Pizza, ingredients Ingredients) Pizza {
 
 func Recuit(ingredients Ingredients, clients []Client, firstChoice Pizza) Pizza {
 	t := initRecuit(ingredients, clients)
-	coolingFactor := 0.9
-	nMax := len(ingredients)
-	epsilon := 0.001
+	coolingFactor := 0.999
+	nMax := 12
+	kMax := 100
+	epsilon := 0.0005
 	u := firstChoice
 	N := 0
 	K := 0
@@ -115,7 +116,7 @@ func Recuit(ingredients Ingredients, clients []Client, firstChoice Pizza) Pizza 
 			}
 		}
 		K += 1
-		if (N == nMax) || (K == nMax*100/12) {
+		if (N == nMax) || (K == kMax) {
 			t *= coolingFactor
 			N = 0
 			K = 0
