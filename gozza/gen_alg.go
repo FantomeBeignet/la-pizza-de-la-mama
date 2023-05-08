@@ -140,7 +140,7 @@ func (s State) runGeneration(pizzaList []Pizza, ingredients Ingredients, clients
 	for i := 0; i < s.SelectionSize; i++ {
 		newPizzaList = append(newPizzaList, scoredList[i].Pizza)
 	}
-	maxId := getMaxId(pizzaList, clients)
+	maxId := getMaxId(newPizzaList, clients)
 	if s.isGenGood(newPizzaList, clients) {
 		return newPizzaList[maxId]
 	}
