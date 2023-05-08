@@ -54,7 +54,7 @@ func (c Client) LikesPizza(pizza Pizza) bool {
 		}
 	}
 	for k := range pizza {
-		if !c.dislikes.Includes(k) {
+		if c.dislikes.Includes(k) {
 			return false
 		}
 	}
