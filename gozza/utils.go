@@ -11,7 +11,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type Ingredients map[string]struct{}
+type (
+	Ingredients map[string]struct{}
+	Pizza       Ingredients
+)
 
 func (s Ingredients) Add(elt string) {
 	s[elt] = struct{}{}
@@ -26,12 +29,25 @@ func (s Ingredients) Remove(elt string) {
 	delete(s, elt)
 }
 
+func (s Pizza) Add(elt string) {
+	s[elt] = struct{}{}
+}
+
+func (s Pizza) Includes(elt string) bool {
+	_, ok := s[elt]
+	return ok
+}
+
+func (s Pizza) Remove(elt string) {
+	delete(s, elt)
+}
+
 type Client struct {
 	likes    Ingredients
 	dislikes Ingredients
 }
 
-func (c Client) LikesPizza(pizza Ingredients) bool {
+func (c Client) LikesPizza(pizza Pizza) bool {
 	for k := range c.likes {
 		if !pizza.Includes(k) {
 			return false
@@ -46,7 +62,7 @@ func (c Client) LikesPizza(pizza Ingredients) bool {
 }
 
 func ParseInput(filename string) (Ingredients, []Client) {
-	file, err := os.Open("/path/to/file.txt")
+	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,17 +84,25 @@ func ParseInput(filename string) (Ingredients, []Client) {
 		likes := Ingredients{}
 		dislikes := Ingredients{}
 		scanner.Scan()
-		client_likes := strings.Split(scanner.Text(), " ")
-		if num_likes, err := strconv.Atoi(client_likes[0]); err != nil && num_likes > 0 {
-			for _, v := range client_likes[1:] {
+		clientLikes := strings.Split(scanner.Text(), " ")
+		numLikes, err := strconv.Atoi(clientLikes[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+		if numLikes > 0 {
+			for _, v := range clientLikes[1:] {
 				ingredients.Add(v)
 				likes.Add(v)
 			}
 		}
 		scanner.Scan()
-		client_dislikes := strings.Split(scanner.Text(), " ")
-		if num_dislikes, err := strconv.Atoi(client_dislikes[0]); err != nil && num_dislikes > 0 {
-			for _, v := range client_dislikes[1:] {
+		clientDislikes := strings.Split(scanner.Text(), " ")
+		numDislikes, err := strconv.Atoi(clientDislikes[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+		if numDislikes > 0 {
+			for _, v := range clientDislikes[1:] {
 				ingredients.Add(v)
 				dislikes.Add(v)
 			}
@@ -93,7 +117,7 @@ func ParseInput(filename string) (Ingredients, []Client) {
 	return ingredients, clients
 }
 
-func SaveSolution(file string, pizza Ingredients) {
+func SaveSolution(file string, pizza Pizza) {
 	f, err := os.Create(file)
 	if err != nil {
 		log.Fatal(err)
@@ -101,7 +125,7 @@ func SaveSolution(file string, pizza Ingredients) {
 	f.WriteString(fmt.Sprintf("%d %s", len(pizza), strings.Join(maps.Keys(pizza), " ")))
 }
 
-func SatisfiedClients(pizza Ingredients, clients []Client) int {
+func SatisfiedClients(pizza Pizza, clients []Client) int {
 	res := 0
 	for _, c := range clients {
 		if c.LikesPizza(pizza) {
