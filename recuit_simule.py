@@ -45,8 +45,9 @@ def neighbor(state: set[str], ingredients: set[str]) -> set[str]:
     return new_state
 
 def simulated_annealing(ingredients: set[str], clients: list[tuple[set[str], set[str]]], first_choice: set[str]) -> set[str]:
-    t= init(ingredients,clients) # TO first temperature
-    cooling_factor =0.9
+    # t= init(ingredients,clients) # TO first temperature
+    t = 2000
+    cooling_factor =0.999
     Nmax  = len(ingredients)
     epsilon = 0.001
     u = first_choice 
@@ -66,11 +67,11 @@ def simulated_annealing(ingredients: set[str], clients: list[tuple[set[str], set
                 N += 1
                 u = v
         K += 1
-        if (N == Nmax) or (K == Nmax*100//12):
+        if (N == 12) or (K == 100):
             t = t*cooling_factor
             N = 0
             K = 0
-            print("Etape t = "+str(t)+", score= "+str(-fv))
+           # print("Etape t = "+str(t)+", score= "+str(-fv))
     return u
 
 
