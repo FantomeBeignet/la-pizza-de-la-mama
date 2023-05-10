@@ -9,7 +9,7 @@ if __name__ == '__main__':
     max_score = 0
     best_res = set()
     print(ingredients, clients)
-    for i in range(1, len(ingredients)):
+    for i in range(1, len(ingredients)+1):
         for c in combinations(ingredients, i):
             score = satisfied_clients(set(c), clients)
             print(c, score)
