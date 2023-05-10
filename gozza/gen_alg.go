@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"golang.org/x/exp/maps"
 )
@@ -18,11 +20,12 @@ type State struct {
 	PopSize       int
 	SelectionSize int
 	Repeat        int
+	MaxRepeat     int
 	LastScore     int
 }
 
-func (s State) createPizzas(ingredients Ingredients) []Pizza {
-	var pizzas []Pizza
+func (s State) createPizzas(ingredients Ingredients, clients []Client) []PizzaWithScore {
+	var pizzas []PizzaWithScore
 	for i := 0; i < s.PopSize; i++ {
 		pizza := Pizza{}
 		for k := range ingredients {
@@ -30,129 +33,137 @@ func (s State) createPizzas(ingredients Ingredients) []Pizza {
 				pizza.Add(k)
 			}
 		}
-		pizzas = append(pizzas, pizza)
+		pizzas = append(
+			pizzas,
+			PizzaWithScore{Pizza: pizza, Score: SatisfiedClients(pizza, clients)},
+		)
 	}
 	return pizzas
 }
 
-func (s *State) isGenGood(pizzaList []Pizza, clients []Client) bool {
-	maxScore := getMaxScore(pizzaList, clients)
-	if maxScore == s.LastScore {
-		s.Repeat += 1
-		if s.Repeat > 10 {
-			return true
-		}
-		return false
-	}
-	s.LastScore = maxScore
-	s.Repeat = 0
-	return false
+func (s *State) isGenGood() bool {
+	s.Repeat++
+	return s.Repeat > s.MaxRepeat
 }
 
-func (s State) proportionSelection(scoredList []PizzaWithScore, clients []Client) []Pizza {
-	sort.SliceStable(scoredList, func(i, j int) bool { return scoredList[i].Score < scoredList[j].Score })
-	var res []Pizza
-	for i := 0; i < s.SelectionSize; i++ {
-		res = append(res, scoredList[i].Pizza)
-	}
-	return res
-}
-
-func (s State) fillPizzaSelection(pizzaList *[]Pizza, ingredients Ingredients) {
-	for i := 0; i < (s.PopSize - len(*pizzaList)); i++ {
-		pizza := Pizza{}
-		for k := range ingredients {
-			if rand.Float64() > 0.5 {
-				pizza.Add(k)
-			}
-		}
-		*pizzaList = append(*pizzaList, pizza)
-	}
-}
-
-func getMaxScore(pizzaList []Pizza, clients []Client) int {
-	bestScore := 0
-	for _, pizza := range pizzaList {
-		if SatisfiedClients(pizza, clients) > bestScore {
-			bestScore = SatisfiedClients(pizza, clients)
-		}
-	}
-	return bestScore
-}
-
-func getMaxId(pizzaList []Pizza, clients []Client) int {
-	id := 0
-	maxScore := SatisfiedClients(pizzaList[0], clients)
-	for i := 1; i < len(pizzaList); i++ {
-		if SatisfiedClients(pizzaList[i], clients) > maxScore {
-			id = i
-		}
-	}
-	return id
-}
-
-func crossing(pizzaList *[]Pizza, ingredients Ingredients) {
-	for i := 0; i < len(*pizzaList)/2; i++ {
-		pizza := Pizza{}
-		for k := range ingredients {
-			if (*pizzaList)[2*1].Includes(k) && (*pizzaList)[2*i+1].Includes(k) {
-				pizza.Add(k)
-			} else if (*pizzaList)[2*1].Includes(k) || (*pizzaList)[2*i+1].Includes(k) {
-				if rand.Float64() > 0.5 {
+func (s State) fillPizzaSelection(
+	pizzaList *[]PizzaWithScore,
+	ingredients Ingredients,
+	clients []Client,
+) {
+	wg := sync.WaitGroup{}
+	l := len(*pizzaList)
+	appendList := make([]PizzaWithScore, l)
+	for i := 0; i < (s.PopSize - l); i++ {
+		wg.Add(1)
+		go func(ind int) {
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			defer wg.Done()
+			pizza := Pizza{}
+			for k := range ingredients {
+				if r.Float64() > 0.5 {
 					pizza.Add(k)
 				}
 			}
-		}
-		*pizzaList = append(*pizzaList, pizza)
+			score := SatisfiedClients(pizza, clients)
+			appendList[ind] = PizzaWithScore{Pizza: pizza, Score: score}
+		}(i)
+	}
+	wg.Wait()
+	for _, v := range appendList {
+		*pizzaList = append(*pizzaList, v)
 	}
 }
 
-func mutate(pizzaList *[]Pizza, ingredients Ingredients) {
-	for _, pizza := range *pizzaList {
-		if rand.Float64() < 0.3 {
-			for ingredient := range ingredients {
-				if rand.Float64() > 0.5 {
-					if pizza.Includes(ingredient) {
-						pizza.Remove(ingredient)
-					} else {
-						pizza.Add(ingredient)
+func crossing(pizzaList *[]PizzaWithScore, ingredients Ingredients, clients []Client) {
+	wg := sync.WaitGroup{}
+	rand.Shuffle(
+		len(*pizzaList),
+		func(i, j int) { (*pizzaList)[i], (*pizzaList)[j] = (*pizzaList)[j], (*pizzaList)[i] },
+	)
+	appendList := make([]PizzaWithScore, len(*pizzaList)/2)
+	for i := 0; i < len(*pizzaList)/2; i++ {
+		wg.Add(1)
+		go func(ind int) {
+			defer wg.Done()
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			firstPizza := (*pizzaList)[2*ind].Pizza
+			secondPizza := (*pizzaList)[2*ind+1].Pizza
+			pizza := Pizza{}
+			for k := range ingredients {
+				if firstPizza.Includes(k) && secondPizza.Includes(k) {
+					pizza.Add(k)
+				} else if firstPizza.Includes(k) || secondPizza.Includes(k) {
+					if r.Float64() > 0.5 {
+						pizza.Add(k)
 					}
 				}
 			}
-		}
+			score := SatisfiedClients(pizza, clients)
+			appendList[ind] = PizzaWithScore{Pizza: pizza, Score: score}
+		}(i)
 	}
+	wg.Wait()
+	for _, p := range appendList {
+		*pizzaList = append(*pizzaList, p)
+	}
+}
+
+func mutate(pizzaList *[]PizzaWithScore, ingredients Ingredients, clients []Client) {
+	wg := sync.WaitGroup{}
+	for i, pizza := range *pizzaList {
+		wg.Add(1)
+		go func(ind int, p PizzaWithScore) {
+			defer wg.Done()
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			newPizza := Pizza{}
+			if rand.Float64() > 0.5 {
+				for ingredient := range ingredients {
+					if r.Float64() > 0.5 {
+						if newPizza.Includes(ingredient) {
+							newPizza.Remove(ingredient)
+						} else {
+							newPizza.Add(ingredient)
+						}
+					}
+				}
+				score := SatisfiedClients(newPizza, clients)
+				(*pizzaList)[ind] = PizzaWithScore{Pizza: newPizza, Score: score}
+			}
+		}(i, pizza)
+	}
+	wg.Wait()
 }
 
 func RunAlgo(filename string) Pizza {
 	ingredients, clients := ParseInput(filename)
-	state := State{PopSize: 50, SelectionSize: 30, Repeat: 0, LastScore: 0}
-	pizzaList := state.createPizzas(ingredients)
+	state := State{PopSize: 500, SelectionSize: 200, Repeat: 0, MaxRepeat: 5000, LastScore: 0}
+	pizzaList := state.createPizzas(ingredients, clients)
 	return state.runGeneration(pizzaList, ingredients, clients)
 }
 
-func (s State) runGeneration(pizzaList []Pizza, ingredients Ingredients, clients []Client) Pizza {
-	var scoredList []PizzaWithScore
-	var newPizzaList []Pizza
-	for _, pizza := range pizzaList {
-		scoredList = append(scoredList, PizzaWithScore{Score: SatisfiedClients(pizza, clients), Pizza: pizza})
-		sort.SliceStable(scoredList, func(i, j int) bool { return scoredList[i].Score > scoredList[j].Score })
+func (s State) runGeneration(
+	pizzaList []PizzaWithScore,
+	ingredients Ingredients,
+	clients []Client,
+) Pizza {
+	sort.SliceStable(
+		pizzaList,
+		func(i, j int) bool { return pizzaList[i].Score > pizzaList[j].Score },
+	)
+	pizzaList = pizzaList[:s.SelectionSize]
+	best := pizzaList[0]
+	fmt.Println("gen #", s.Repeat, "score:", best.Score)
+	if s.isGenGood() {
+		return best.Pizza
 	}
-	for i := 0; i < s.SelectionSize; i++ {
-		newPizzaList = append(newPizzaList, scoredList[i].Pizza)
+	crossing(&pizzaList, ingredients, clients)
+	mutate(&pizzaList, ingredients, clients)
+	pizzaList = append([]PizzaWithScore{best}, pizzaList...)
+	if len(pizzaList) < s.PopSize {
+		s.fillPizzaSelection(&pizzaList, ingredients, clients)
 	}
-	maxId := getMaxId(newPizzaList, clients)
-	if s.isGenGood(newPizzaList, clients) {
-		return newPizzaList[maxId]
-	}
-	best := newPizzaList[maxId]
-	newPizzaList = append(newPizzaList[:maxId], newPizzaList[maxId+1:]...)
-	crossing(&newPizzaList, ingredients)
-	mutate(&newPizzaList, ingredients)
-	newPizzaList = append(newPizzaList, best)
-	if len(newPizzaList) < s.PopSize {
-		s.fillPizzaSelection(&newPizzaList, ingredients)
-	}
-	return s.runGeneration(newPizzaList, ingredients, clients)
+	return s.runGeneration(pizzaList, ingredients, clients)
 }
 
 func printPizzas(pizzas []Pizza) {
